@@ -9,3 +9,11 @@ hk = "latest"
 jactionlint = "latest"
 node = "24"
 pkl = "latest"
+
+[env]
+FORKCTL_MANIFEST = "patches/fork.yaml"
+
+[task_config]
+includes = [
+  "git::https://github.com/victor-software-house/forkctl.git//tasks/fork?ref=v0.1.1",
+]

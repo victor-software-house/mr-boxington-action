@@ -1,0 +1,48 @@
+%YAML 1.2
+---
+schema: 2
+downstream:
+  remote: origin
+  branch: downstream
+  recovery_tag_prefix: forkctl/recovery
+  publish: append
+upstream:
+  remote: upstream
+  url: https://github.com/jdx/mr-boxington-action.git
+  fetch_ref: refs/heads/main
+base:
+  target:
+    type: tag
+    selector: refs/tags/v1.7.4
+    commit: b3ef673bd77c5426927fe8836c6185cdae04c2dd
+  canonical: b3ef673bd77c5426927fe8836c6185cdae04c2dd
+  stack: b3ef673bd77c5426927fe8836c6185cdae04c2dd
+documents:
+  ledger: PATCHES.md
+  exports: patches/downstream
+bookkeeping_patch: fork-tooling
+patches:
+  - name: cache-reservation-warning
+    layer: source
+    purpose: "Treat an actions/cache reservation conflict as an unavailable save when actions/cache logs it as a ::warning:: line. The minified dist renames ReserveCacheError, so actions/cache logs the conflict through core.warning, and the bare-line pattern missed it and failed the step."
+    upstream_status: not-submitted
+    drop_when: "Upstream jdx/mr-boxington-action classifies the ::warning:: form of the reservation conflict as service-reservation."
+    scope:
+      - src/objects-cache.ts
+      - __tests__/objects-cache.test.ts
+      - dist/**
+  - name: fork-tooling
+    layer: tooling
+    purpose: Own fork policy, generated evidence, and integration configuration.
+    upstream_status: "inappropriate: downstream-only fork maintenance"
+    drop_when: The downstream fork is retired.
+    scope:
+      - patches/fork.yaml
+      - PATCHES.md
+      - patches/downstream/**
+      - mise.toml
+disabled_patches: []
+history: []
+contracts:
+  allow_base: []
+  required_text: []
