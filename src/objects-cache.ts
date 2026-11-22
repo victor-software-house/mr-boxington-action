@@ -811,7 +811,7 @@ export function classifyCacheSaveFailure(output: string): CacheSaveFailure {
     return 'service-5xx'
   }
   if (
-    /(?:^|\r?\n)Failed to save: Unable to reserve cache with key [^\r\n]*, another job may be creating this cache\.(?: More details: [^\r\n]*)?\r?(?:\n|$)/i.test(
+    /(?:^|\r?\n)(?:::warning::)?Failed to save: Unable to reserve cache with key [^\r\n]*, another job may be creating this cache\.(?: More details: [^\r\n]*)?\r?(?:\n|$)/i.test(
       output
     ) ||
     /::warning::(?:Failed to save: )?Unable to finalize cache with key [^\r\n]*, another job may be finalizing this cache\.\r?\n/i.test(
