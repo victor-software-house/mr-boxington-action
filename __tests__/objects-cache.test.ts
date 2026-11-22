@@ -1045,6 +1045,57 @@ describe('isolated objects bundle save lifecycle', () => {
     expect(classifyCacheSaveFailure(policyDenial)).toBe('unknown')
   })
 
+  it('classifies a reservation conflict whether actions/cache logs it as a warning or as info', async () => {
+    const conflict =
+      'Failed to save: Unable to reserve cache with key linux-x64-mbx-v1-dir-rust-897e5912e8f5-4b1cefda5d13a760b48c63b0710cdd974cbb9c2d, another job may be creating this cache.'
+    const warned = (await withBoundedActionOutput(async () => core.warning(conflict))).output
+    expect(warned).toBe(`::warning::${conflict}\n`)
+    expect(classifyCacheSaveFailure(warned)).toBe('service-reservation')
+    const logged = (await withBoundedActionOutput(async () => core.info(conflict))).output
+    expect(logged).toBe(`${conflict}\n`)
+    expect(classifyCacheSaveFailure(logged)).toBe('service-reservation')
+    const v1Warned = (
+      await withBoundedActionOutput(async () =>
+        core.warning(`${conflict} More details: Cache already exists. Scope: refs/heads/main`)
+      )
+    ).output
+    expect(classifyCacheSaveFailure(v1Warned)).toBe('service-reservation')
+
+    expect(classifyCacheSaveFailure(`::error::${conflict}\n`)).toBe('unknown')
+    expect(classifyCacheSaveFailure(`::notice::${conflict}\n`)).toBe('unknown')
+    expect(classifyCacheSaveFailure(`::warning::Retrying: ${conflict}\n`)).toBe('unknown')
+    expect(classifyCacheSaveFailure(`::warning::::warning::${conflict}\n`)).toBe('unknown')
+  })
+
+  it('skips the save when actions/cache warns that another job reserved the key', async () => {
+    const {paths, cargoTarget} = await setup()
+    const warnings: string[] = []
+    const result = await saveIsolatedObjectsBundle({
+      paths,
+      primaryKey: 'generated-key',
+      saveEligible: true,
+      exactHit: false,
+      cargoTarget,
+      exportBundle: async bundle => {
+        await mkdir(bundle)
+        await writeFile(path.join(bundle, 'manifest.json'), '{}')
+        return {exitCode: 0, output: ''}
+      },
+      isEmptyExport: () => false,
+      saveCache: async (_paths, key) => {
+        core.warning(
+          `Failed to save: Unable to reserve cache with key ${key}, another job may be creating this cache.`
+        )
+        return -1
+      },
+      emit: () => {},
+      warn: message => warnings.push(message)
+    })
+    expect(result).toBe('save-unavailable')
+    expect(warnings).toEqual(['GitHub cache save skipped after classified service-reservation'])
+    expect(await pathExists(paths.bundle)).toBe(false)
+  })
+
   it('accepts V2 save IDs only with the V2 service and fails closed on V1 reservation IDs', async () => {
     const {paths, cargoTarget} = await setup()
     const originalV2 = process.env.ACTIONS_CACHE_SERVICE_V2
